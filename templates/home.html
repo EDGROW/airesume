@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Screening System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4bb543;
+            --error: #ff4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7ff;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            padding: 0.7rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            margin: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            color: #555;
+        }
+
+        .section-title {
+            text-align: center;
+            margin: 4rem 0 3rem;
+        }
+
+        .section-title h2 {
+            font-size: 2.2rem;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .section-title p {
+            color: #666;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .feature-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid var(--primary);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .feature-card p {
+            color: #666;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin: 3rem 0;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 1.5rem;
+        }
+
+        .step h3 {
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .step p {
+            color: #666;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            right: -20px;
+            width: 40px;
+            height: 2px;
+            background-color: var(--primary);
+            opacity: 0.3;
+        }
+
+        .form-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: var(--primary);
+            background-color: #f0f4ff;
+        }
+
+        .file-upload i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .file-upload p {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload small {
+            color: #999;
+        }
+
+        .result-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-top: 1rem;
+        }
+
+        .error-message {
+            color: var(--error);
+            background-color: #ffeeee;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--error);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .evaluation-result {
+            border-left: 4px solid var(--primary);
+            background-color: #f0f4ff;
+        }
+
+        .match-result {
+            border-left: 4px solid var(--success);
+            background-color: #f0fff0;
+        }
+
+        .result-card strong {
+            color: var(--primary);
+        }
+
+        .result-card em {
+            color: var(--success);
+            font-style: normal;
+        }
+
+        .result-card ul {
+            padding-left: 1rem;
+            margin: 0.5rem 0;
+            list-style-type: none;
+        }
+
+        .result-card li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-card li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .highlight {
+            background-color: #fffacd;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .percentage {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--success);
+            background-color: #f0fff0;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 0.5rem 0;
+        }
+        
+        .keyword {
+            color: var(--secondary);
+            font-weight: bold;
+            background-color: #f0f4ff;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+        }
+        
+        .recommendation {
+            font-size: 1.2rem;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            display: block;
+            line-height: 1.6;
+        }
+        
+        .recommendation.fit {
+            background-color: #e6f7e6;
+            color: #2e7d32;
+            border-left: 4px solid #4bb543;
+        }
+        
+        .recommendation.not-fit {
+            background-color: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #ff4444;
+        }
+        
+        .candidate-name {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+
+        .result-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .result-section h3 {
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        /* Updated Job Seeker Card */
+        .job-seeker-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid #4361ee; /* Success color for distinction */
+        }
+        
+        .job-seeker-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .job-seeker-card .feature-icon {
+            color: #4361ee; /* Success color */
+            margin-bottom: 1.5rem;
+        }
+        
+        .job-seeker-card h3 {
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+        
+        .job-seeker-card p {
+            color: #666;
+        }
+        
+        
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+            
+            .step:not(:last-child)::after {
+                display: none;
+            }
+            
+            .step {
+                margin-bottom: 2rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>AI-Powered Resume Screening</h1>
+            <p>Revolutionize your hiring process with our advanced AI system that analyzes, ranks, and shortlists candidates in seconds, saving you time and helping you find the perfect fit for talent as well as companys.</p>
+        </section>
+
+
+        <div class="how-it-works">
+            <div class="section-title">
+                <h2>How It Works</h2>
+                <p>Simple steps to transform your recruitment process with AI-powered efficiency</p>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Upload Job Description</h3>
+                    <p>Provide the job details and requirements you're looking for in your ideal candidate.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Add Resume</h3>
+                    <p>Upload candidate resume in PDF or Word format through our simple interface.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>AI Processing</h3>
+                    <p>Our system analyzes the resume against your criteria using advanced NLP and ML algorithms.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Get Results</h3>
+                    <p>Receive detailed evaluation and match percentage with missing keywords.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="form-container">
+                <form method="POST" enctype="multipart/form-data">
+                    {% if error %}
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="job_description">Job Description (paste text or upload below)</label>
+                        <textarea class="form-control" id="job_description" name="job_description">{{ job_description }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Job Description (PDF/DOC)</label>
+                        <div class="file-upload">
+                            <input type="file" id="jd_file" name="jd_file" accept=".pdf,.doc,.docx" style="display: none;">
+                            <label for="jd_file" style="cursor: pointer; text-align: center;">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click to upload JD file</p>
+                                <small>PDF, DOC, DOCX files (max 16MB)</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mandatory_skills">Top Mandatory Skills (optional)</label>
+                        <input type="text" class="form-control" id="mandatory_skills" name="mandatory_skills" 
+                            value="{{ mandatory_skills }}" placeholder="e.g. Python, TensorFlow, AWS">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="required_experience">Required Experience Range (optional)</label>
+                        <input type="text" class="form-control" id="required_experience" name="required_experience" 
+                            value="{{ required_experience }}" placeholder="e.g. 3-5 years">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Resume (PDF/DOC)</label>
+                        <div class="file-upload">
+                            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" 
+                                   {% if filename %}data-has-file="true"{% else %}required{% endif %} style="display: none;">
+                            <label for="resume" style="cursor: pointer; text-align: center;">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click to upload resume</p>
+                                <small>PDF, DOC, DOCX files (max 16MB)</small>
+                                {% if filename %}
+                                <p><strong>Uploaded:</strong> {{ filename }}</p>
+                                {% endif %}
+                            </label>
+                        </div>
+                    </div>
+
+                                      <div class="button-group">
+                        <button type="submit" name="action" value="match" class="btn btn-success">
+                            <i class="fas fa-percentage"></i> Match Percentage
+                        </button>
+                        <button type="submit" name="action" value="evaluate" class="btn">
+                            <i class="fas fa-file-alt"></i> Evaluate Resume
+                        </button>
+                        {% if filename %}
+                        <button type="submit" formaction="{{ url_for('clear') }}" class="btn btn-outline">
+                            <i class="fas fa-trash-alt"></i> Clear All
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            {% if evaluation_result %}
+            <div class="form-group" id="evaluation-result">
+                <h2><i class="fas fa-file-alt"></i> Evaluation Result</h2>
+                <div class="result-card evaluation-result">
+                    {{ evaluation_result | safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if match_result %}
+            <div class="form-group" id="match-result">
+                <h2><i class="fas fa-percentage"></i> ATS Match Result</h2>
+                <div class="result-card match-result">
+                    {{ match_result | safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="features-section">
+            <div class="section-title">
+                <h2>Smart Hiring Features</h2>
+                <p>Our AI resume screening system is packed with powerful features designed to streamline your recruitment process</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI-Powered Analysis</h3>
+                    <p>Our advanced algorithms evaluate resumes based on skills, experience, and job requirements with human-like understanding.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Lightning Fast</h3>
+                    <p>Process hundreds of resumes in minutes, not hours. Get candidate shortlists instantly after submission.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mouse-pointer"></i>
+                    </div>
+                    <h3>Easy to Use</h3>
+                    <p>Simple interface with drag-and-drop functionality makes resume screening effortless for everyone.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Bias Reduction</h3>
+                    <p>Minimize unconscious bias in hiring by focusing on skills and qualifications rather than demographics.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h3>Custom Criteria</h3>
+                    <p>Tailor the screening process to your specific needs with customizable evaluation parameters.</p>
+                </div>
+                
+                <div class="job-seeker-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>Job Seeker Advantage</h3>
+                    <p>Get instant feedback on your resume's match rate and improve your chances before applying.</p>
+                    
+                </div>
+            </div>
+        </div>
+
+       
+    </div>
+
+    <script>
+        // Clear form and session data on refresh or browser load
+        window.onload = function () {
+            if (performance.navigation.type === 1 || performance.getEntriesByType("navigation")[0]?.type === "reload") {
+                document.querySelectorAll("form").forEach(form => form.reset());
+                sessionStorage.clear();
+                localStorage.clear();
+                fetch("/clear", { method: "POST" }).then(() => console.log("Session cleared"));
+            }
+        };
+
+        // Enhance file upload display
+        document.getElementById('resume').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'No file selected';
+            const uploadLabel = document.querySelector('label[for="resume"] p:last-of-type');
+            if (uploadLabel) {
+                uploadLabel.textContent = `Selected: ${fileName}`;
+                uploadLabel.style.fontWeight = 'bold';
+                uploadLabel.style.color = 'var(--primary)';
+            }
+        });
+
+        document.getElementById('jd_file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'No file selected';
+            const jdUploadLabel = document.querySelector('label[for="jd_file"] p:last-of-type');
+            if (jdUploadLabel) {
+                jdUploadLabel.textContent = `Selected: ${fileName}`;
+                jdUploadLabel.style.fontWeight = 'bold';
+                jdUploadLabel.style.color = 'var(--primary)';
+            }
+        });
+
+        // Drag and drop functionality
+        const fileUploads = document.querySelectorAll('.file-upload');
+        fileUploads.forEach(upload => {
+            upload.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                upload.style.borderColor = 'var(--primary)';
+                upload.style.backgroundColor = '#f0f4ff';
+            });
+
+            upload.addEventListener('dragleave', () => {
+                upload.style.borderColor = '#ddd';
+                upload.style.backgroundColor = '#f9f9f9';
+            });
+
+            upload.addEventListener('drop', (e) => {
+                e.preventDefault();
+                upload.style.borderColor = '#ddd';
+                upload.style.backgroundColor = '#f9f9f9';
+
+                if (e.dataTransfer.files.length) {
+                    const fileInput = upload.querySelector('input[type="file"]');
+                    fileInput.files = e.dataTransfer.files;
+
+                    // Trigger change event
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            });
+        });
+
+        // Style recommendation and highlight candidate name
+        document.addEventListener('DOMContentLoaded', function() {
+            const recommendation = document.querySelector('.recommendation');
+            if (recommendation) {
+                const text = recommendation.textContent.toLowerCase();
+                if (text.includes('not fit') || text.includes('not a fit')) {
+                    recommendation.classList.add('not-fit');
+                } else if (text.includes('fit') || text.includes('strong candidate')) {
+                    recommendation.classList.add('fit');
+                }
+
+                // Highlight candidate name
+                const nameMatch = recommendation.textContent.match(/([A-Z][a-z]+(?: [A-Z][a-z]+)*),/);
+                if (nameMatch && nameMatch[1]) {
+                    const name = nameMatch[1];
+                    recommendation.innerHTML = recommendation.innerHTML.replace(
+                        new RegExp(name, 'g'),
+                        `<span class="candidate-name">${name}</span>`
+                    );
+                }
+            }
+
+            // Scroll to result if present
+            const evalSection = document.getElementById("evaluation-result");
+            const matchSection = document.getElementById("match-result");
+
+            if (evalSection) {
+                evalSection.scrollIntoView({ behavior: "smooth" });
+            } else if (matchSection) {
+                matchSection.scrollIntoView({ behavior: "smooth" });
+            }
+        });
+
+        // Scroll to form on job seeker card click
+        const jobSeekerBtn = document.querySelector('.job-seeker-card .btn');
+        if (jobSeekerBtn) {
+            jobSeekerBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+    </script>
+</body>
+</html>
