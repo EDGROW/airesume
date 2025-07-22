@@ -213,7 +213,7 @@ def index():
         job_description = request.form.get('job_description', '')
         mandatory_skills = request.form.get('mandatory_skills', '')
         required_experience = request.form.get('required_experience', '')
-	job_link = request.form.get('job_link', '')  # New: get job link
+	    job_link = request.form.get('job_link', '')  # New: get job link
         action = request.form.get('action')
         
         # Handle JD file upload if provided
@@ -228,7 +228,7 @@ def index():
         session['job_description'] = job_description
         session['mandatory_skills'] = mandatory_skills
         session['required_experience'] = required_experience
-	session['job_link'] = job_link  # New: store job link
+	    session['job_link'] = job_link  # New: store job link
 
 	        # Process job link if provided
         if job_link:
