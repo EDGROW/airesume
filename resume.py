@@ -228,7 +228,7 @@ def index():
         session['job_description'] = job_description
         session['mandatory_skills'] = mandatory_skills
         session['required_experience'] = required_experience
-	    session['job_link'] = job_link  # New: store job link
+	session['job_link'] = job_link  # New: store job link
 
 	        # Process job link if provided
         if job_link:
