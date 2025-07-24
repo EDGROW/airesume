@@ -1,3 +1,4 @@
+import time  # For temp filename
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.utils import secure_filename
 import os
@@ -170,36 +171,74 @@ chain = LLMChain(llm=llm, prompt=prompt) if llm else None
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # Initialize variables from session
-    job_description = session.get('job_description', '')
+    job_description_text = session.get('job_description_text', '')
     mandatory_skills = session.get('mandatory_skills', '')
     required_experience = session.get('required_experience', '')
+    job_link = session.get('job_link', '')
     filename = session.get('filename', '')
     evaluation_result = session.get('evaluation_result', '')
     match_result = session.get('match_result', '')
     error = ''
     
+    # This will hold the final JD for LLM processing
+    job_description_for_llm = ""
+    
     if request.method == 'POST':
         # Get form data
-        job_description = request.form.get('job_description', '')
+        job_description_text = request.form.get('job_description', '')
         mandatory_skills = request.form.get('mandatory_skills', '')
         required_experience = request.form.get('required_experience', '')
+        job_link = request.form.get('job_link', '')
         action = request.form.get('action')
         
-        # Handle JD file upload if provided
-        if 'jd_file' in request.files:
+        # Reset the combined JD
+        job_description_for_llm = ""
+        sources_used = []
+        
+        # Process job link FIRST (if provided)
+        if job_link:
+            try:
+                jd_from_url = extract_jd_from_url(job_link)
+                if jd_from_url:
+                    job_description_for_llm += f"Job Posting from URL: {job_link}\n\n{jd_from_url}\n\n"
+                    sources_used.append("URL")
+                else:
+                    error = "Could not extract job description from the provided link"
+            except Exception as e:
+                error = f"Error processing job link: {str(e)}"
+        
+        # Process JD file SECOND (if provided and no error)
+        if not error and 'jd_file' in request.files:
             jd_file = request.files['jd_file']
             if jd_file.filename != '':
                 if jd_file and allowed_file(jd_file.filename):
-                    jd_text = extract_text_from_file(jd_file, jd_file.filename.rsplit('.', 1)[1].lower())
-                    job_description = jd_text + "\n\n" + job_description  # Combine with text field
+                    try:
+                        extension = jd_file.filename.rsplit('.', 1)[1].lower()
+                        temp_filename = f"temp_jd_{int(time.time())}.{extension}"
+                        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+                        jd_file.save(temp_path)
+                        jd_text = extract_text_from_file(temp_path, extension)
+                        job_description_for_llm += f"Job Description from File Upload: {jd_file.filename}\n\n{jd_text}\n\n"
+                        sources_used.append("File")
+                        os.remove(temp_path)
+                    except Exception as e:
+                        error = error or f"Error processing JD file: {str(e)}"
+                else:
+                    error = error or "Invalid JD file type"
+        
+        # Process text area THIRD (if provided)
+        if job_description_text.strip():
+            job_description_for_llm += f"Job Description from Text Input:\n\n{job_description_text}\n\n"
+            sources_used.append("Text")
         
         # Store in session
-        session['job_description'] = job_description
+        session['job_description_text'] = job_description_text
         session['mandatory_skills'] = mandatory_skills
         session['required_experience'] = required_experience
+        session['job_link'] = job_link
         
         # Resume upload handling
-        if 'resume' in request.files:
+        if 'resume' in request.files and not error:
             file = request.files['resume']
             if file.filename != '':
                 if file and allowed_file(file.filename):
@@ -214,16 +253,22 @@ def index():
                     error = "Allowed file types are PDF, DOC, DOCX"
         
         # Process if we have inputs
-        if not error and (session.get('filename') or job_description.strip()):
+        if not error and (session.get('filename') or job_description_for_llm.strip()):
             resume_text = ""
             if session.get('filename'):
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], session['filename'])
                 extension = session['filename'].rsplit('.', 1)[1].lower()
                 resume_text = extract_text_from_file(filepath, extension)
             
+            # If we didn't get any JD source, use the text area as fallback
+            if not job_description_for_llm.strip() and job_description_text.strip():
+                job_description_for_llm = job_description_text
+            
             try:
                 if not llm:
                     error = "LLM service not configured"
+                elif not job_description_for_llm.strip():
+                    error = "Please provide job description through text, file, or URL"
                 else:
                     # Extract candidate name
                     extracted_name = extract_name_from_resume(resume_text)
@@ -234,20 +279,20 @@ def index():
                     # Simple fit determination based on skills
                     is_fit = True  # Default to fit if no mandatory skills
                     if mandatory_skills:
-                        is_fit = any(skill.lower() in resume_text.lower() 
+                        is_fit = any(skill.strip().lower() in resume_text.lower() 
                                    for skill in mandatory_skills.split(','))
                     
                     if action == "evaluate":
                         evaluation_result = chain.run(
                             role_prompt=input_prompt1,
-                            job_description=job_description,
+                            job_description=job_description_for_llm,  # Use combined JD
                             resume_text=resume_text,
                             mandatory_skills=mandatory_skills,
                             required_experience=required_experience,
                             experience_analysis=exp_analysis,
-                            percentage="",  # Not used in this prompt
-                            missing_skills="",  # Not used in this prompt
-                            recommendation=""  # Not used in this prompt
+                            percentage="",
+                            missing_skills="",
+                            recommendation=""
                         )
                         evaluation_result = format_html_output(evaluation_result)
                         session['evaluation_result'] = evaluation_result
@@ -259,29 +304,48 @@ def index():
                             f"{'We recommend applying!' if is_fit else 'Consider other roles that match your skills.'}"
                         )
                         
+                        # Calculate a simple match percentage (this should be improved)
+                        match_percentage = 0
+                        if mandatory_skills:
+                            skills_list = [skill.strip().lower() for skill in mandatory_skills.split(',')]
+                            matched_skills = sum(1 for skill in skills_list if skill in resume_text.lower())
+                            match_percentage = min(100, int((matched_skills / len(skills_list)) * 100))
+                        else:
+                            # Simple fallback if no skills provided
+                            match_percentage = 80 if is_fit else 40
+                        
+                        # Generate missing skills list
+                        missing_skills_html = ""
+                        if mandatory_skills:
+                            skills_list = [skill.strip() for skill in mandatory_skills.split(',')]
+                            missing_skills = [skill for skill in skills_list if skill.lower() not in resume_text.lower()]
+                            missing_skills_html = "".join(
+                                f"<li><span class='keyword'>{skill}</span></li>" 
+                                for skill in missing_skills
+                            )
+                        
                         match_result = chain.run(
                             role_prompt=input_prompt3,
-                            job_description=job_description,
+                            job_description=job_description_for_llm,  # Use combined JD
                             resume_text=resume_text,
                             mandatory_skills=mandatory_skills,
                             required_experience=required_experience,
-                            percentage="80",  # You should calculate this dynamically
-                            missing_skills="<li><span class='keyword'>Cloud infrastructure (AWS/Azure/GCP)</span></li>"
-                                          "<li><span class='keyword'>Containerization (Docker/Kubernetes)</span></li>"
-                                          "<li><span class='keyword'>Infrastructure-as-code</span></li>",
+                            percentage=str(match_percentage),
+                            missing_skills=missing_skills_html,
                             recommendation=recommendation
                         )
                         match_result = format_html_output(match_result)
                         session['match_result'] = match_result
             except Exception as e:
                 error = f"Error processing: {str(e)}"
-        elif not session.get('filename') and not job_description.strip():
-            error = "Please upload a resume or enter job description"
+        elif not session.get('filename') and not job_description_for_llm.strip():
+            error = "Please upload a resume and provide job description"
     
     return render_template('home.html',
-                         job_description=job_description,
+                         job_description=job_description_text,  # Only show text input
                          mandatory_skills=mandatory_skills,
                          required_experience=required_experience,
+                         job_link=job_link,
                          filename=filename,
                          evaluation_result=evaluation_result,
                          match_result=match_result,
