@@ -52,6 +52,34 @@ def format_html_output(text):
     
     return text
 
+
+# Add this function above format_html_output
+def extract_jd_from_url(url):
+    """Extract job description text from a URL"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove unnecessary tags
+        for element in soup(['script', 'style', 'header', 'footer', 'nav', 'aside']):
+            element.decompose()
+        
+        # Get text and clean it
+        text = soup.get_text(separator='\n', strip=True)
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        clean_text = '\n'.join(lines)
+        
+        return clean_text
+    
+    except Exception as e:
+        print(f"Error extracting from URL: {str(e)}")
+        return None
+
 def extract_text_from_file(filepath, extension):
     """Extract text from PDF or DOC/DOCX files"""
     text = ""
@@ -168,6 +196,9 @@ Resume:
 
 chain = LLMChain(llm=llm, prompt=prompt) if llm else None
 
+
+
+# Replace your entire index route with this:
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # Initialize variables from session
@@ -194,6 +225,7 @@ def index():
         # Reset the combined JD
         job_description_for_llm = ""
         sources_used = []
+        errors = []
         
         # Process job link FIRST (if provided)
         if job_link:
@@ -203,12 +235,12 @@ def index():
                     job_description_for_llm += f"Job Posting from URL: {job_link}\n\n{jd_from_url}\n\n"
                     sources_used.append("URL")
                 else:
-                    error = "Could not extract job description from the provided link"
+                    errors.append("Could not extract job description from the provided link")
             except Exception as e:
-                error = f"Error processing job link: {str(e)}"
+                errors.append(f"Error processing job link: {str(e)}")
         
-        # Process JD file SECOND (if provided and no error)
-        if not error and 'jd_file' in request.files:
+        # Process JD file SECOND (if provided)
+        if 'jd_file' in request.files:
             jd_file = request.files['jd_file']
             if jd_file.filename != '':
                 if jd_file and allowed_file(jd_file.filename):
@@ -222,9 +254,9 @@ def index():
                         sources_used.append("File")
                         os.remove(temp_path)
                     except Exception as e:
-                        error = error or f"Error processing JD file: {str(e)}"
+                        errors.append(f"Error processing JD file: {str(e)}")
                 else:
-                    error = error or "Invalid JD file type"
+                    errors.append("Invalid JD file type - allowed: PDF, DOC, DOCX")
         
         # Process text area THIRD (if provided)
         if job_description_text.strip():
@@ -238,108 +270,113 @@ def index():
         session['job_link'] = job_link
         
         # Resume upload handling
-        if 'resume' in request.files and not error:
+        resume_uploaded = False
+        if 'resume' in request.files:
             file = request.files['resume']
             if file.filename != '':
                 if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(filepath)
-                    session['filename'] = filename
-                    # Clear previous results when new file is uploaded
-                    session.pop('evaluation_result', None)
-                    session.pop('match_result', None)
+                    try:
+                        filename = secure_filename(file.filename)
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        file.save(filepath)
+                        session['filename'] = filename
+                        resume_uploaded = True
+                        # Clear previous results when new file is uploaded
+                        session.pop('evaluation_result', None)
+                        session.pop('match_result', None)
+                    except Exception as e:
+                        errors.append(f"Error saving resume: {str(e)}")
                 else:
-                    error = "Allowed file types are PDF, DOC, DOCX"
+                    errors.append("Allowed resume file types are PDF, DOC, DOCX")
         
-        # Process if we have inputs
-        if not error and (session.get('filename') or job_description_for_llm.strip()):
-            resume_text = ""
-            if session.get('filename'):
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], session['filename'])
-                extension = session['filename'].rsplit('.', 1)[1].lower()
-                resume_text = extract_text_from_file(filepath, extension)
+        # Validate inputs
+        if not session.get('filename') and not resume_uploaded:
+            errors.append("Please upload a resume")
             
-            # If we didn't get any JD source, use the text area as fallback
-            if not job_description_for_llm.strip() and job_description_text.strip():
-                job_description_for_llm = job_description_text
-            
+        if not job_description_for_llm.strip():
+            errors.append("Please provide job description through text, file, or URL")
+        
+        # If we have inputs and no errors, process
+        if not errors:
             try:
-                if not llm:
-                    error = "LLM service not configured"
-                elif not job_description_for_llm.strip():
-                    error = "Please provide job description through text, file, or URL"
-                else:
-                    # Extract candidate name
-                    extracted_name = extract_name_from_resume(resume_text)
+                resume_text = ""
+                if session.get('filename'):
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], session['filename'])
+                    extension = session['filename'].rsplit('.', 1)[1].lower()
+                    resume_text = extract_text_from_file(filepath, extension)
+                
+                # Extract candidate name
+                extracted_name = extract_name_from_resume(resume_text)
+                
+                # Simple experience extraction
+                exp_analysis = f"Candidate experience vs required {required_experience}"
+                
+                # Simple fit determination based on skills
+                is_fit = True  # Default to fit if no mandatory skills
+                if mandatory_skills:
+                    skills_list = [skill.strip().lower() for skill in mandatory_skills.split(',')]
+                    is_fit = any(skill in resume_text.lower() for skill in skills_list)
+                
+                if action == "evaluate":
+                    evaluation_result = chain.run(
+                        role_prompt=input_prompt1,
+                        job_description=job_description_for_llm,  # Use combined JD
+                        resume_text=resume_text,
+                        mandatory_skills=mandatory_skills,
+                        required_experience=required_experience,
+                        experience_analysis=exp_analysis,
+                        percentage="",
+                        missing_skills="",
+                        recommendation=""
+                    )
+                    evaluation_result = format_html_output(evaluation_result)
+                    session['evaluation_result'] = evaluation_result
+                elif action == "match":
+                    # Generate dynamic recommendation based on fit
+                    fit_status = "a strong fit" if is_fit else "not a fit"
+                    recommendation = (
+                        f"{extracted_name}, you are {fit_status} for this position. "
+                        f"{'We recommend applying!' if is_fit else 'Consider other roles that match your skills.'}"
+                    )
                     
-                    # Simple experience extraction
-                    exp_analysis = f"Candidate experience vs required {required_experience}"
-                    
-                    # Simple fit determination based on skills
-                    is_fit = True  # Default to fit if no mandatory skills
+                    # Calculate a simple match percentage
+                    match_percentage = 0
                     if mandatory_skills:
-                        is_fit = any(skill.strip().lower() in resume_text.lower() 
-                                   for skill in mandatory_skills.split(','))
+                        skills_list = [skill.strip().lower() for skill in mandatory_skills.split(',')]
+                        matched_skills = sum(1 for skill in skills_list if skill in resume_text.lower())
+                        match_percentage = min(100, int((matched_skills / len(skills_list)) * 100))
+                    else:
+                        # Simple fallback if no skills provided
+                        match_percentage = 80 if is_fit else 40
                     
-                    if action == "evaluate":
-                        evaluation_result = chain.run(
-                            role_prompt=input_prompt1,
-                            job_description=job_description_for_llm,  # Use combined JD
-                            resume_text=resume_text,
-                            mandatory_skills=mandatory_skills,
-                            required_experience=required_experience,
-                            experience_analysis=exp_analysis,
-                            percentage="",
-                            missing_skills="",
-                            recommendation=""
+                    # Generate missing skills list
+                    missing_skills_html = ""
+                    if mandatory_skills:
+                        skills_list = [skill.strip() for skill in mandatory_skills.split(',')]
+                        missing_skills = [skill for skill in skills_list if skill.lower() not in resume_text.lower()]
+                        missing_skills_html = "".join(
+                            f"<li><span class='keyword'>{skill}</span></li>" 
+                            for skill in missing_skills
                         )
-                        evaluation_result = format_html_output(evaluation_result)
-                        session['evaluation_result'] = evaluation_result
-                    elif action == "match":
-                        # Generate dynamic recommendation based on fit
-                        fit_status = "a strong fit" if is_fit else "not a fit"
-                        recommendation = (
-                            f"{extracted_name}, you are {fit_status} for this position. "
-                            f"{'We recommend applying!' if is_fit else 'Consider other roles that match your skills.'}"
-                        )
-                        
-                        # Calculate a simple match percentage (this should be improved)
-                        match_percentage = 0
-                        if mandatory_skills:
-                            skills_list = [skill.strip().lower() for skill in mandatory_skills.split(',')]
-                            matched_skills = sum(1 for skill in skills_list if skill in resume_text.lower())
-                            match_percentage = min(100, int((matched_skills / len(skills_list)) * 100))
-                        else:
-                            # Simple fallback if no skills provided
-                            match_percentage = 80 if is_fit else 40
-                        
-                        # Generate missing skills list
-                        missing_skills_html = ""
-                        if mandatory_skills:
-                            skills_list = [skill.strip() for skill in mandatory_skills.split(',')]
-                            missing_skills = [skill for skill in skills_list if skill.lower() not in resume_text.lower()]
-                            missing_skills_html = "".join(
-                                f"<li><span class='keyword'>{skill}</span></li>" 
-                                for skill in missing_skills
-                            )
-                        
-                        match_result = chain.run(
-                            role_prompt=input_prompt3,
-                            job_description=job_description_for_llm,  # Use combined JD
-                            resume_text=resume_text,
-                            mandatory_skills=mandatory_skills,
-                            required_experience=required_experience,
-                            percentage=str(match_percentage),
-                            missing_skills=missing_skills_html,
-                            recommendation=recommendation
-                        )
-                        match_result = format_html_output(match_result)
-                        session['match_result'] = match_result
+                    
+                    match_result = chain.run(
+                        role_prompt=input_prompt3,
+                        job_description=job_description_for_llm,  # Use combined JD
+                        resume_text=resume_text,
+                        mandatory_skills=mandatory_skills,
+                        required_experience=required_experience,
+                        percentage=str(match_percentage),
+                        missing_skills=missing_skills_html,
+                        recommendation=recommendation
+                    )
+                    match_result = format_html_output(match_result)
+                    session['match_result'] = match_result
             except Exception as e:
-                error = f"Error processing: {str(e)}"
-        elif not session.get('filename') and not job_description_for_llm.strip():
-            error = "Please upload a resume and provide job description"
+                errors.append(f"Error processing: {str(e)}")
+        
+        # Combine all errors
+        if errors:
+            error = "<br>".join(errors)
     
     return render_template('home.html',
                          job_description=job_description_text,  # Only show text input
@@ -350,7 +387,6 @@ def index():
                          evaluation_result=evaluation_result,
                          match_result=match_result,
                          error=error)
-
 @app.route('/clear', methods=['POST'])
 def clear():
     # Clear uploaded file if exists
