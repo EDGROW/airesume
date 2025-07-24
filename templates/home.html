@@ -414,8 +414,14 @@
         .job-seeker-card p {
             color: #666;
         }
-        
-        
+        .required {
+        color: red;
+        font-weight: bold;
+        }
+        .error-message {
+            white-space: pre-line;
+        }
+            
 
         @media (max-width: 768px) {
             .hero h1 {
@@ -529,11 +535,12 @@
             </div>
 
             <!-- Resume Upload -->
+            <!-- Update the resume upload section -->
             <div class="form-group">
                 <label>Upload Resume (PDF/DOC) <span class="required">*</span></label>
                 <div class="file-upload">
                     <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" 
-                        style="display: none;" required>
+                           style="display: none;" required>
                     <label for="resume" style="cursor: pointer; text-align: center;">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Click to upload resume</p>
