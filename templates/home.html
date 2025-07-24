@@ -478,99 +478,110 @@
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="form-container">
-                <form method="POST" enctype="multipart/form-data">
-                    {% if error %}
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i> {{ error }}
-                    </div>
-                    {% endif %}
+       <div class="main-content">
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data">
+            {% if error %}
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+            {% endif %}
 
-                    <div class="form-group">
-                        <label for="job_description">Job Description (paste text or upload below)</label>
-                        <textarea class="form-control" id="job_description" name="job_description">{{ job_description }}</textarea>
-                    </div>
-                    <div class="form-group">
-                    <label for="job_link">Job Link (LinkedIn/Indeed/etc.):</label>
-                    <input type="url" class="form-control" id="job_link" name="job_link" 
-                           value="{{ job_link }}" placeholder="https://www.linkedin.com/jobs/view/...">
-                    <small class="form-text text-muted">Paste a job posting URL</small>
+            <!-- Job Description Text Area -->
+            <div class="form-group">
+                <label for="job_description">Job Description (paste text or upload below)</label>
+                <textarea class="form-control" id="job_description" name="job_description">{{ job_description }}</textarea>
+            </div>
+            
+            <!-- Job Link Input -->
+            <div class="form-group">
+                <label for="job_link">Job Link (LinkedIn/Indeed/etc.):</label>  
+                <input type="url" class="form-control" id="job_link" name="job_link" 
+                    value="{{ job_link }}" placeholder="https://www.linkedin.com/jobs/view/...">
+                <small class="form-text text-muted">Paste a job posting URL</small>
+            </div>
+            
+            <!-- JD File Upload -->
+            <div class="form-group">
+                <label>Upload Job Description (PDF/DOC)</label>
+                <div class="file-upload">
+                    <input type="file" id="jd_file" name="jd_file" accept=".pdf,.doc,.docx" style="display: none;">
+                    <label for="jd_file" style="cursor: pointer; text-align: center;">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload JD file</p>
+                        <small>PDF, DOC, DOCX files (max 16MB)</small>
+                    </label>
                 </div>
-                    <div class="form-group">
-                        <label>Upload Job Description (PDF/DOC)</label>
-                        <div class="file-upload">
-                            <input type="file" id="jd_file" name="jd_file" accept=".pdf,.doc,.docx" style="display: none;">
-                            <label for="jd_file" style="cursor: pointer; text-align: center;">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Click to upload JD file</p>
-                                <small>PDF, DOC, DOCX files (max 16MB)</small>
-                            </label>
-                        </div>
-                    </div>
+            </div>
 
-                    <div class="form-group">
-                        <label for="mandatory_skills">Top Mandatory Skills (optional)</label>
-                        <input type="text" class="form-control" id="mandatory_skills" name="mandatory_skills" 
-                            value="{{ mandatory_skills }}" placeholder="e.g. Python, TensorFlow, AWS">
-                    </div>
+            <!-- Mandatory Skills -->
+            <div class="form-group">
+                <label for="mandatory_skills">Top Mandatory Skills (optional)</label>
+                <input type="text" class="form-control" id="mandatory_skills" name="mandatory_skills" 
+                    value="{{ mandatory_skills }}" placeholder="e.g. Python, TensorFlow, AWS">
+            </div>
 
-                    <div class="form-group">
-                        <label for="required_experience">Required Experience Range (optional)</label>
-                        <input type="text" class="form-control" id="required_experience" name="required_experience" 
-                            value="{{ required_experience }}" placeholder="e.g. 3-5 years">
-                    </div>
+            <!-- Required Experience -->
+            <div class="form-group">
+                <label for="required_experience">Required Experience Range (optional)</label>
+                <input type="text" class="form-control" id="required_experience" name="required_experience" 
+                    value="{{ required_experience }}" placeholder="e.g. 3-5 years">
+            </div>
 
-                    <div class="form-group">
-                        <label>Upload Resume (PDF/DOC)</label>
-                        <div class="file-upload">
-                            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" 
-                                   {% if filename %}data-has-file="true"{% else %}required{% endif %} style="display: none;">
-                            <label for="resume" style="cursor: pointer; text-align: center;">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Click to upload resume</p>
-                                <small>PDF, DOC, DOCX files (max 16MB)</small>
-                                {% if filename %}
-                                <p><strong>Uploaded:</strong> {{ filename }}</p>
-                                {% endif %}
-                            </label>
-                        </div>
-                    </div>
-
-                                      <div class="button-group">
-                        <button type="submit" name="action" value="match" class="btn btn-success">
-                            <i class="fas fa-percentage"></i> Match Percentage
-                        </button>
-                        <button type="submit" name="action" value="evaluate" class="btn">
-                            <i class="fas fa-file-alt"></i> Evaluate Resume
-                        </button>
+            <!-- Resume Upload -->
+            <div class="form-group">
+                <label>Upload Resume (PDF/DOC) <span class="required">*</span></label>
+                <div class="file-upload">
+                    <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" 
+                        style="display: none;" required>
+                    <label for="resume" style="cursor: pointer; text-align: center;">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload resume</p>
+                        <small>PDF, DOC, DOCX files (max 16MB)</small>
                         {% if filename %}
-                        <button type="submit" formaction="{{ url_for('clear') }}" class="btn btn-outline">
-                            <i class="fas fa-trash-alt"></i> Clear All
-                        </button>
+                        <p><strong>Uploaded:</strong> {{ filename }}</p>
                         {% endif %}
-                    </div>
-                </form>
-            </div>
-
-            {% if evaluation_result %}
-            <div class="form-group" id="evaluation-result">
-                <h2><i class="fas fa-file-alt"></i> Evaluation Result</h2>
-                <div class="result-card evaluation-result">
-                    {{ evaluation_result | safe }}
+                    </label>
                 </div>
             </div>
-            {% endif %}
 
-            {% if match_result %}
-            <div class="form-group" id="match-result">
-                <h2><i class="fas fa-percentage"></i> ATS Match Result</h2>
-                <div class="result-card match-result">
-                    {{ match_result | safe }}
-                </div>
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button type="submit" name="action" value="match" class="btn btn-success">
+                    <i class="fas fa-percentage"></i> Match Percentage
+                </button>
+                <button type="submit" name="action" value="evaluate" class="btn">
+                    <i class="fas fa-file-alt"></i> Evaluate Resume
+                </button>
+                {% if filename or job_description or job_link or mandatory_skills or required_experience or evaluation_result or match_result %}
+                <button type="submit" formaction="{{ url_for('clear') }}" class="btn btn-outline">
+                    <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+                {% endif %}
             </div>
-            {% endif %}
+        </form>
+    </div>
+
+    <!-- Evaluation Result -->
+    {% if evaluation_result %}
+    <div class="form-group" id="evaluation-result">
+        <h2><i class="fas fa-file-alt"></i> Evaluation Result</h2>
+        <div class="result-card evaluation-result">
+            {{ evaluation_result | safe }}
         </div>
+    </div>
+    {% endif %}
+
+    <!-- Match Result -->
+    {% if match_result %}
+    <div class="form-group" id="match-result">
+        <h2><i class="fas fa-percentage"></i> ATS Match Result</h2>
+        <div class="result-card match-result">
+            {{ match_result | safe }}
+        </div>
+    </div>
+    {% endif %}
+</div>
 
         <div class="features-section">
             <div class="section-title">
